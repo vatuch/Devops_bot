@@ -1,0 +1,127 @@
+
+- name: Deploy PostgreSQL Database and Configure Replication
+  hosts: database
+  gather_facts: false
+  vars:
+    db_host: "192.168.206.140"
+    db_port: 5432
+    db_name: "bot_db"
+    db_user: "tg_user"
+    db_password: "8520"
+    db_repl_user: "postgres"
+    db_repl_password: "8520"
+    db_repl_host: "192.168.206.140"
+    become: yes
+  tasks:
+    - name: Wait for PostgreSQL to accept connections
+      wait_for:
+        host: "{{ db_host }}"
+        port: "{{ db_port }}"
+        timeout: 30
+
+    - name: Install PostgreSQL if not installed
+      apt:
+        name: 
+          - postgresql
+          - python3-psycopg2 
+        state: present
+        update_cache: yes
+      become: yes
+
+
+    - name: Create PostgreSQL database for TG Bot
+      community.postgresql.postgresql_db:
+        name: "{{ db_name }}"
+        login_user: postgres
+        login_password: 8520
+        #login_host: "{{ db_host }}"
+        state: present
+      become: true
+
+    - name: Create PostgreSQL user for TG Bot
+      community.postgresql.postgresql_user:
+        name: "{{ db_user }}"
+        password: 8520
+        login_host: "{{ db_host }}"
+        state: present
+        login: "postgres"
+        login_password: "8520"
+      become: true
+
+    - name: Grant permissions on the database to the bot user
+      community.postgresql.postgresql_privs:
+        db: "{{ db_name }}"
+        role: "{{ db_user }}"
+        type: database
+        priv: ALL
+        state: present
+        login: "postgres"
+        login_password: "8520"
+
+    - name: Configure replication settings
+      lineinfile:
+        path: /etc/postgresql/15/main/postgresql.conf
+        regexp: '^{{ item.key }}'
+        line: '{{ item.key }} = {{ item.value }}'
+      loop:
+        - { key: 'wal_level', value: 'replica' }
+        - { key: 'max_wal_senders', value: '10' }
+        - { key: 'wal_keep_segments', value: '64' }
+
+    - name: Configure pg_hba.conf for replication
+      lineinfile:
+        path: /etc/postgresql/15/main/pg_hba.conf
+        line: "host    replication     {{ db_repl_user }}     {{ db_repl_host }}/32       md5"
+        state: present
+
+    - name: Restart PostgreSQL to apply configuration changes
+      systemd:
+        name: postgresql
+        state: restarted
+
+- name: Deploy TG Bot
+  hosts: bot
+  gather_facts: false
+  vars:
+    source_host: "192.168.206.155"
+    source_path: "/home/valeria/bot.py"
+    bot_path: "/opt/tg_bot"
+
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - git
+        state: present
+        update_cache: yes
+      become: yes
+    - name: Create bot directory
+      file:
+        path: "{{ bot_path }}"
+        state: directory
+
+    - name: Copy bot files from source server
+      synchronize:
+        src: "{{ source_host }}:{{ source_path }}"
+        dest: "{{ bot_path }}"
+        delete: no
+
+    - name: Install Python dependencies
+      pip:
+        requirements: "{{ bot_path }}/requirements.txt"
+
+    - name: Start the TG Bot
+      command: python3 {{ bot_path }}/bot.py
+      async: 10
+      poll: 0
+      register: bot_process
+
+    - name: Wait for the bot to start
+      wait_for:
+        port: 8443
+        delay: 5
+        timeout: 30
+      when: bot_process is succeeded
+
