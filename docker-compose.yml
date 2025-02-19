@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  database:
+    image: 192.168.206.140:5000/db_image
+    environment:
+      POSTGRES_DB: bot_db
+      POSTGRES_USER: tg_user
+      POSTGRES_PASSWORD: 8520
+    networks:
+      - mynetwork
+    ports:
+      - "5432:5432"
+
+  db_replica:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: bot_db
+      POSTGRES_USER: tg_user
+      POSTGRES_PASSWORD: 8520
+    networks:
+      - mynetwork
+    depends_on:
+      - database
+    ports:
+      - "5433:5432"  
+
+  bot:
+    image: 192.168.206.140:5000/bot_image
+    env_file:
+      - token.env 
+    environment:
+      DATABASE_URL: postgres://tg_user:8520@192.168.206.140:5432/bot_db
+    depends_on:
+      - database
+      - db_replica 
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
