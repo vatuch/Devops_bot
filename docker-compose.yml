@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   database:
-    image: 192.168.206.140:5000/db_image
+    build: 
+      context: ./db
+      dockerfile: Dockerfile.bd
     environment:
       POSTGRES_DB: bot_db
       POSTGRES_USER: tg_user
@@ -13,7 +15,9 @@ services:
       - "5432:5432"
 
   db_replica:
-    image: postgres:latest
+    build: 
+      context: ./db_repl
+      dockerfile: Dockerfile.repl
     environment:
       POSTGRES_DB: bot_db
       POSTGRES_USER: tg_user
@@ -26,11 +30,13 @@ services:
       - "5433:5432"  
 
   bot:
-    image: 192.168.206.140:5000/bot_image
+    build: 
+      context: ./bot
+      dockerfile: Dockerfile.bot
     env_file:
       - token.env 
     environment:
-      DATABASE_URL: postgres://tg_user:8520@192.168.206.140:5432/bot_db
+      DATABASE_URL: postgres://tg_user:8520@database:5432/bot_db
     depends_on:
       - database
       - db_replica 
