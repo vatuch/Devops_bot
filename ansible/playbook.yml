@@ -83,10 +83,8 @@
   hosts: bot
   gather_facts: false
   vars:
-    source_host: "192.168.206.155"
-    source_path: "/home/valeria/bot.py"
-    bot_path: "/opt/tg_bot"
-
+    repo_url: "https://github.com/vatuch/Devops_bot.git" 
+  
   tasks:
     - name: Install required packages
       apt:
@@ -97,23 +95,24 @@
         state: present
         update_cache: yes
       become: yes
+
     - name: Create bot directory
       file:
-        path: "{{ bot_path }}"
+        path: "~/Devops_bot"
         state: directory
 
-    - name: Copy bot files from source server
-      synchronize:
-        src: "{{ source_host }}:{{ source_path }}"
-        dest: "{{ bot_path }}"
-        delete: no
+    - name: Clone the TG Bot repository from GitHub
+      git:
+        repo: ""
+        dest: "~/Devops_bot"
+        update: yes  
 
     - name: Install Python dependencies
       pip:
-        requirements: "{{ bot_path }}/requirements.txt"
+        requirements: "~Devops_bot/ansible/requirements.txt"
 
     - name: Start the TG Bot
-      command: python3 {{ bot_path }}/bot.py
+      command: python3  ~/Devops_bot/ansible/bot.py
       async: 10
       poll: 0
       register: bot_process
@@ -124,4 +123,5 @@
         delay: 5
         timeout: 30
       when: bot_process is succeeded
+
 
