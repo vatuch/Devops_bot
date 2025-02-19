@@ -1,0 +1,7 @@
+FROM postgres:latest
+
+ENV POSTGRES_DB=bot_db
+
+ENV POSTGRES_USER=postgres
+
+ENV POSTGRES_PASSHORD=8520
