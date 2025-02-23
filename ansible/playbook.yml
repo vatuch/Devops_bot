@@ -36,7 +36,7 @@
         login_password: 8520
         #login_host: "{{ db_host }}"
         state: present
-      become: true
+      become: yes
 
     - name: Create PostgreSQL user for TG Bot
       community.postgresql.postgresql_user:
@@ -103,6 +103,7 @@
 
     - name: Clone the TG Bot repository from GitHub
       git:
+        repo: "https://github.com/vatuch/Devops_bot.git"
         repo: ""
         dest: "~/Devops_bot"
         update: yes  
@@ -123,5 +124,3 @@
         delay: 5
         timeout: 30
       when: bot_process is succeeded
-
-
